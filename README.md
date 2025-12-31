@@ -1,141 +1,164 @@
 ![Icon of Vora](icon.png)
 
-# Vora
-A video streaming platform, high-performance, non-blocking Authentication & Authorization microservice built using **Kotlin**, **Spring Boot WebFlux**, and **Hexagonal Architecture**.
+# VORA — Distributed Video Streaming Platform
 
-[![Kotlin](https://img.shields.io/badge/Kotlin-2.0-purple.svg)](https://kotlinlang.org)
-[![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.x-green.svg)](https://spring.io/projects/spring-boot)
-[![Reactive](https://img.shields.io/badge/Reactive-WebFlux-blue.svg)](https://projectreactor.io)
+![Architecture](https://img.shields.io/badge/Architecture-Microservices-blue)
+![Backend](https://img.shields.io/badge/Stack-Kotlin_%7C_Go-purple)
+![Orchestration](https://img.shields.io/badge/Orchestration-Temporal.io-black)
+![Protocol](https://img.shields.io/badge/Protocol-TUS_Resumable_Upload-green)
 
-## Auth Service
-This service handles user registration, secure login, JWT issuance, and Multi-Factor Authentication (MFA) coordination, utilizing Redis for caching/state and PostgreSQL for persistence.
+**Vora** is a high-performance, fault-tolerant video streaming platform designed to handle the complex lifecycle of media: from unstable network ingestion to distributed transcoding and adaptive bitrate streaming (HLS).
 
-## 🚀 Key Features
+This project demonstrates **Hexagonal Architecture**, **Reactive Programming**, and **Workflow Orchestration** to solve the common pitfalls of distributed media systems (partial failures, orphan states, and scaling bottlenecks).
 
-*   **Reactive Stack**: Fully asynchronous IO using Project Reactor (Mono/Flux) and R2DBC.
-*   **Hexagonal Architecture**: Strict separation between Domain logic, Inbound adapters (Controllers), and Outbound adapters (Persistence, Notifications).
-*   **Security**:
-    *   RSA Signed JWTs (Access Tokens).
-    *   BCrypt Password Hashing.
-*   **Multi-Factor Authentication (MFA)**:
-    *   **None**: Standard Email/Password login.
-    *   **Authenticator App**: TOTP generation (Google Authenticator) with QR Code generation.
-    *   **Email OTP**: Time-sensitive verification codes via SMTP.
-*   **Performance Optimizations**:
-    *   **Bloom Filters (Redis)**: Rapid existence checks during registration to prevent database hits for existing emails.
-    *   **Dead Letter Queue (DLQ)**: Robust error handling for Bloom Filter updates using Redis Streams.
-*   **Resilience**: Rate limiting on OTP verification attempts.
+---
 
-## 🛠 Tech Stack
+## 🏗 High-Level Architecture
 
-*   **Language**: Kotlin
-*   **Framework**: Spring Boot 3 (WebFlux, Security)
-*   **Database**: PostgreSQL (R2DBC)
-*   **Caching/State**: Redis (Reactive), Redisson
-*   **Token**: JJWT (Java JWT)
-*   **QR Code**: ZXing
-*   **Build Tool**: Gradle
-*   **Testing**: JUnit 5, Mockk, Testcontainers, WebTestClient
+Vora strictly enforces a **"Smart Endpoints, Dumb Pipes"** philosophy. Business logic resides in domain-centric services, while long-running processes are managed by a durable execution engine (Temporal).
 
-## 📂 Architecture Overview
+```mermaid
+graph TD
+  Client[Web / Mobile Client]
 
-The project follows the Ports and Adapters (Hexagonal) pattern:
+  subgraph "Ingress Layer"
+    Auth["Auth Service<br/>(Kotlin/WebFlux)"]
+    Upload["Upload Service<br/>(Go/TUS)"]
+    Gate[Streaming Gateway]
+  end
 
-*   **Domain**: Contains core models (`User`, `MFAOptions`) and business rules. Dependency-free.
-*   **Application**: Implements Use Cases (`LoginService`, `RegisterService`).
-*   **Ports**: Interfaces defining how the outside world interacts with the domain.
-*   **Infrastructure**:
-    *   **Inbound**: REST Controllers.
-    *   **Outbound**: Implementation of interfaces for PostgreSQL (`UserRepository`), Redis (`BloomFilter`, `OtpStorage`), and Email.
+  subgraph "Core Services"
+    Meta["Metadata Service<br/>(The Brain)"]
+    Temp["Temporal Cluster<br/>(The Conductor)"]
+  end
 
-## ⚙️ Configuration & Setup
+  subgraph "Infrastructure"
+    DB[(PostgreSQL)]
+    Redis[(Redis / Bloom)]
+    MinIO[(MinIO Object Storage)]
+    Worker["Transcoding Worker<br/>(FFmpeg)"]
+  end
 
-### Prerequisites
-
-*   JDK 21+
-*   Docker (for Redis and PostgreSQL)
-*   OpenSSL (to generate RSA keys)
-
-### 1. RSA Key Generation
-
-The service requires an RSA key pair to sign and verify JWTs. Generate them in a specific directory (e.g., `certs/`):
-
-```bash
-# Generate Private Key
-openssl genpkey -algorithm RSA -out private.pem -pkeyopt rsa_keygen_bits:2048
-
-# Generate Public Key
-openssl rsa -pubout -in private.pem -out public.pem
-```
-
-*Note: Ensure the path to these keys matches the `jwt.rsa-key-pair-path` property.*
-
-### 2. Environment Variables
-
-Create an `application.yml` or set these environment variables:
-
-| Variable                  | Description                             | Default                                    |
-|:--------------------------|:----------------------------------------|:-------------------------------------------|
-| `SPRING_R2DBC_URL`        | PostgreSQL R2DBC Connection URL         | `r2dbc:postgresql://localhost:5432/authdb` |
-| `SPRING_DATA_REDIS_HOST`  | Redis Host                              | `localhost`                                |
-| `JWT_RSA_KEY_PAIR_PATH`   | Path to directory containing .pem files | `/path/to/certs`                           |
-| `APP_ISSUER`              | Name of the app for TOTP Apps           | `Ethyllium`                                |
-| `NOTIFICATION_EMAIL_FROM` | Sender email for OTPs                   | `no-reply@ethyllium.com`                   |
-| `SPRING_MAIL_HOST`        | SMTP Server Host                        | `smtp.gmail.com`                           |
-| `SPRING_MAIL_USERNAME`    | SMTP Username                           | -                                          |
-| `SPRING_MAIL_PASSWORD`    | SMTP Password                           | -                                          |
-
-## 🏃 How to Run
-
-### Using Gradle
-
-```bash
-./gradlew bootRun
-```
-
-### Using Docker Compose (Recommended)
-
-*Ensure you have a `docker-compose.yml` set up for Postgres and Redis.*
-
-```bash
-docker-compose up -d
-```
-
-## 🛣️ Upcoming Milestones
-
-The following features and improvements are planned to complete the Authentication Service:
-
-### Phase 1: Token Lifecycle Management (High Priority)
-- [ ] **Refresh Token Endpoint**: Although `generateRefreshToken` exists in the service, the API endpoint (`/api/v1/refresh-token`) to exchange a Refresh Token for a new Access Token is missing.
-- [ ] **Logout Mechanism**: Implement a "Blacklist" strategy (using Redis with TTL) to invalidate JWTs before their natural expiry.
-- [ ] **Token Revocation**: Admin ability to revoke all tokens for a specific user (e.g., in case of compromise).
-
-### Phase 2: User Account Management
-- [ ] **Forgot Password Flow**: Implement `initiate-reset` (sends email) and `confirm-reset` (updates DB) endpoints.
-- [ ] **Email Verification**: Complete the loop for `MFAOptions.EMAIL` registration. Currently, it sends an email but the specific endpoint to verify the link/token and activate the user is required.
-- [ ] **Profile Management**: Endpoints to change password or update email.
-
-### Phase 3: Reliability & Monitoring
-- [ ] **Rate Limiting**: Implement global API rate limiting (e.g., Bucket4j + Redis) to protect the `/login` and `/register` endpoints from brute force, beyond the current OTP attempt counter.
-- [ ] **Distributed Tracing**: Integrate Micrometer/Zipkin for tracing requests across the reactive chain.
-- [ ] **Health Checks**: Add custom Spring Actuator health indicators for Redis Bloom Filter and SMTP connectivity.
-
-### Phase 4: Expansion
-- [ ] **OAuth2 / OIDC Support**: Add support for "Login with Google/GitHub" to act as an Identity Provider wrapper.
-- [ ] **Role-Based Access Control (RBAC)**: Expand the `User` model and JWT claims to include Roles/Authorities for downstream services to consume.
-- [ ] **HTML Email Templates**: Replace the current hardcoded string bodies in `SmtpNotificationAdapter` with Thymeleaf or FreeMarker templates for professional emails.
-
-## 🧪 Testing
-
-The project maintains high test coverage using:
-*   **Unit Tests**: `Mockk` for service layer isolation.
-*   **Integration Tests**: `Testcontainers` (PostgreSQL) for repository layer verification.
-*   **WebFlux Tests**: `WebTestClient` for controller endpoints.
-
-Run tests via:
-```bash
-./gradlew test
+  Client -- JWT Login --> Auth
+  Client -- Resumable Upload --> Upload
+  Upload -- Raw Bytes --> MinIO
+  Upload -.-> Meta
+  Meta -- Start Workflow --> Temp
+  Temp -- Schedule Activity --> Worker
+  Worker -- Transcode --> MinIO
+  Client -- "Play (HLS)" --> Gate
 ```
 
 ---
+
+## 🧩 Microservices Breakdown
+
+### 1. Authentication Service (`/auth-service`)
+**Role:** Identity Provider & Security Perimeter.
+*   **Tech Stack:** Kotlin, Spring Boot WebFlux, PostgreSQL (R2DBC), Redis (Redisson).
+*   **Key Features:**
+    *   **Non-blocking I/O:** Fully reactive chain from Controller to Database.
+    *   **Bloom Filters:** Uses Redis Bloom Filters to reject duplicate registration emails in $O(1)$ time / constant space, preventing DB hits for existing users.
+    *   **Resilience:** Implements a Dead Letter Queue (DLQ) via Redis Streams to handle Bloom Filter sync failures.
+    *   **MFA:** Support for TOTP (Google Authenticator) and Email OTPs.
+
+### 2. Upload Service (`/upload-service`)
+**Role:** High-throughput Ingestion Edge.
+*   **Tech Stack:** Go (Golang), Gin, TUS Protocol.
+*   **Design Philosophy:** "The Upload Service does not know what a video is."
+*   **Key Features:**
+    *   **TUS Protocol:** Supports pause, resume, and retry for uploads over unstable mobile networks.
+    *   **Stateless:** Streams multipart chunks directly to S3/MinIO without local buffering.
+    *   **Trust Boundary:** valid tokens are required, but identity logic is offloaded.
+
+### 3. Metadata Service (Planned)
+**Role:** The Authoritative Source of Truth.
+*   **Role:** Manages the Video State Machine (`CREATED` -> `PROCESSING` -> `READY`).
+*   **Responsibility:** Triggers Temporal workflows upon upload completion via Webhooks.
+
+### 4. Workflow Engine (Temporal)
+**Role:** Distributed Orchestrator.
+*   **Problem Solved:** Replaces fragile cron jobs and message queues for complex video processing.
+*   **Guarantee:** If a video starts processing, it *will* finish or fail cleanly. No "zombie" states.
+*   **Activities:** Thumbnail generation, 360p/720p/1080p transcoding (FFmpeg).
+
+---
+
+## ⚡️ Key Engineering Decisions
+
+### 1. Hexagonal Architecture (Ports & Adapters)
+The `auth-service` strictly separates the **Domain** (Business Rules) from **Infrastructure** (DB/Web).
+*   **Benefit:** We can swap the Notification adapter (currently SMTP) for Twilio or AWS SES without touching a single line of business logic.
+*   **Testability:** Domain logic is tested with pure unit tests, mocking the "Ports."
+
+### 2. State-First Design
+We defined **Finite State Machines (FSM)** for Videos and Uploads *before* writing API endpoints.
+*   *See [State Machine Design](docs/state-machine-design.md)*
+*   **Benefit:** Prevents invalid transitions (e.g., a video going from `READY` back to `PROCESSING`) and ensures idempotency in distributed retries.
+
+### 3. Resilience & Failure Contracts
+We define specific "Blast Radii" for failures.
+*   *See [Failure Contracts](docs/failure-contract.md)*
+*   **Example:** If the **Analytics** service goes down, the **Streaming Gateway** drops events and keeps playing video. Playback never blocks on analytics.
+*   **Example:** If **Bloom Filters** fail to update during registration, the event is pushed to a Redis Stream DLQ for async retry, ensuring the user registration flow completes successfully.
+
+---
+
+## 🚀 Getting Started
+
+### Prerequisites
+*   Docker & Docker Compose
+*   JDK 21 (for Auth Service)
+*   Go 1.22+ (for Upload Service)
+
+### Quick Start (Docker Compose)
+
+The entire platform infrastructure (Postgres, Redis, MinIO, Temporal) is containerized.
+
+```bash
+# Start Infrastructure
+docker-compose up -d
+
+# Run Auth Service
+cd auth-service && ./gradlew bootRun
+
+# Run Upload Service
+cd upload-service && go run server.go
+```
+
+---
+
+## 🛣️ Roadmap & Milestones
+
+### Phase 1: Foundation (Current Status)
+- [x] **Auth Service:** Registration, Login, JWT issuance, MFA (TOTP/Email).
+- [x] **Upload Service:** TUS Server implementation, S3 streaming.
+- [x] **Architecture:** Service boundaries, Failure contracts, and State Machine definitions defined.
+
+### Phase 2: Integration (Next Sprint)
+- [ ] **Service-to-Service Communication:** Connect Upload Service Webhooks to Metadata Service.
+- [ ] **Temporal Workflow Implementation:** Write the actual Go/Java Temporal definitions for the Transcoding workflow.
+- [ ] **Token Validation:** Share JWT public keys between Auth Service (Issuer) and Upload/Gateway (Validators).
+
+### Phase 3: Delivery & Caching
+- [ ] **Streaming Gateway:** Implement the HLS manifest generator.
+- [ ] **Varnish Integration:** Configure Varnish for segment caching and cache invalidation logic.
+- [ ] **CDN Simulation:** Dockerized Nginx acting as a CDN edge.
+
+### Phase 4: Observability
+- [ ] **Distributed Tracing:** Implement OpenTelemetry across the Kotlin and Go services.
+- [ ] **Analytics Pipeline:** Implement the ClickHouse ingestion sink defined in the Service Boundary RFC.
+
+---
+
+## 📄 Documentation Index
+*   [Service Boundaries & Architecture](service-boundary.md) - The rules of engagement between services.
+*   [System Flows](flow.md) - Sequence diagrams for Upload, Processing, and Playback.
+*   [Failure Contracts](failure-contract.md) - How the system behaves when components die.
+*   [State Machines](state-machine-design.md) - DB Schemas and Transition logic.
+
+---
+
+*Authored by Rishabh Saraswat*
+
 *Built with ❤️ by the Ethyllium Team.*
