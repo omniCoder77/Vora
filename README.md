@@ -93,12 +93,12 @@ The `auth-service` strictly separates the **Domain** (Business Rules) from **Inf
 
 ### 2. State-First Design
 We defined **Finite State Machines (FSM)** for Videos and Uploads *before* writing API endpoints.
-*   *See [State Machine Design](docs/state-machine-design.md)*
+*   *See [State Machine Design](state-machine-design.md)*
 *   **Benefit:** Prevents invalid transitions (e.g., a video going from `READY` back to `PROCESSING`) and ensures idempotency in distributed retries.
 
 ### 3. Resilience & Failure Contracts
 We define specific "Blast Radii" for failures.
-*   *See [Failure Contracts](docs/failure-contract.md)*
+*   *See [Failure Contracts](failure-contract.md)*
 *   **Example:** If the **Analytics** service goes down, the **Streaming Gateway** drops events and keeps playing video. Playback never blocks on analytics.
 *   **Example:** If **Bloom Filters** fail to update during registration, the event is pushed to a Redis Stream DLQ for async retry, ensuring the user registration flow completes successfully.
 
