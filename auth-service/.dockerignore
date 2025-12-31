@@ -1,0 +1,5 @@
+.gradle
+.gitattributes
+.gitignore
+auth-service.iml
+HELP.md

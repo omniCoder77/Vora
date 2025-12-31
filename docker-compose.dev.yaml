@@ -1,0 +1,67 @@
+services:
+
+  redis:
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    image: redis:8.4-rc1-alpine3.22
+    ports:
+      - "6379:6379"
+    container_name: redis
+    volumes:
+      - redis_data:/data
+
+  postgres:
+    image: postgres:18-alpine
+    container_name: postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: auth_db
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER}" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - ./init/init-postgresql.sql:/docker-entrypoint-initdb.d/init-postgresql.sql
+      - postgres_data:/var/lib/postgresql/data
+    command: [ "postgres" ]
+
+  auth-service:
+    build:
+      context: ./auth-service
+      args:
+        GRADLE_USER_HOME: /root/.gradle-auth
+    image: auth-service
+    ports:
+      - "8081:8081"
+    environment:
+      - PORT=8001
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=authdb
+      - POSTGRES_USER=${AUTH_POSTGRES_USER_USERNAME}
+      - POSTGRES_PASSWORD=${AUTH_POSTGRES_USER_PASSWORD}
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    container_name: auth-service
+    volumes:
+      - ~/.keys/jwt/:/etc/keys/
+
+volumes:
+  redis_data:
+    driver: local
+    name: redis_data
+  postgres_data:
+    driver: local
+    name: postgres_data
