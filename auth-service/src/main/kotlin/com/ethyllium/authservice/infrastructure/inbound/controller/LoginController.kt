@@ -35,8 +35,6 @@ class LoginController(private val loginService: LoginService) {
             }
     }
 
-    data class MfaLoginRequest(val tempToken: String, val code: String)
-
     @PostMapping("/login/mfa")
     fun verifyMfa(@RequestBody request: MfaLoginRequest): Mono<ResponseEntity<JwtTokenResponse>> {
         return loginService.verifyMfaAndLogin(request.tempToken, request.code.toInt())
@@ -49,4 +47,7 @@ class LoginController(private val loginService: LoginService) {
                 }
             }
     }
+
 }
+
+data class MfaLoginRequest(val tempToken: String, val code: String)

@@ -11,7 +11,7 @@ import reactor.core.scheduler.Schedulers
 @Component
 class SmtpNotificationAdapter(
     private val javaMailSender: JavaMailSender,
-    @Value("\${notification.email.from}") private val fromAddress: String
+    @Value("\${notification.email.from:vora@gmail.com}") private val fromAddress: String
 ) : NotificationPort {
 
     override fun sendOtpEmail(email: String, otp: String): Mono<Void> {

@@ -1,5 +1,6 @@
 package com.ethyllium.authservice.infrastructure.outbound.jwt
 
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Component
 import java.io.File
 import java.security.KeyFactory
@@ -10,10 +11,12 @@ import java.security.spec.X509EncodedKeySpec
 import java.util.Base64
 
 @Component
-class JwtKeyManager {
+class JwtKeyManager(
+    @Value($$"${jwt.rsa-key-pair-path}") private val keyPairPath: String,
+) {
 
     private val keyFactory = KeyFactory.getInstance("RSA")
-    private val keysDir = "/etc/keys/"
+    private val keysDir = keyPairPath
 
     val privateKey: RSAPrivateKey by lazy { loadPrivateKey() }
     val publicKey: RSAPublicKey by lazy { loadPublicKey() }

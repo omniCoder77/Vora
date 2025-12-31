@@ -25,43 +25,42 @@ dependencies {
     }
     testImplementation("org.springframework.boot:spring-boot-webflux-test")
 
-    implementation("org.jetbrains.kotlin:kotlin-reflect")
     implementation("org.springframework.boot:spring-boot-starter-security")
+    testImplementation("org.springframework.security:spring-security-test")
 
-    implementation("org.springframework.boot:spring-boot-starter-data-redis-reactive")
+    implementation("org.jetbrains.kotlin:kotlin-reflect")
+
     implementation("org.springframework.boot:spring-boot-starter-r2dbc")
     implementation("org.springframework.boot:spring-boot-starter-data-r2dbc")
     implementation("org.postgresql:r2dbc-postgresql")
-    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
-    implementation("io.mockk:mockk:1.14.7")
+    testImplementation("org.testcontainers:testcontainers-r2dbc")
 
+    implementation("org.springframework.boot:spring-boot-starter-data-redis-reactive")
     implementation("org.redisson:redisson-spring-boot-starter:4.0.0")
+
+    implementation("io.jsonwebtoken:jjwt-api:0.12.6")
+    implementation("io.jsonwebtoken:jjwt-impl:0.12.6")
+    runtimeOnly("io.jsonwebtoken:jjwt-jackson:0.12.6")
+
+    implementation("com.warrenstrange:googleauth:1.5.0")
+    implementation("com.google.zxing:core:3.5.3")
+    implementation("com.google.zxing:javase:3.5.3")
 
     implementation("org.springframework.boot:spring-boot-starter-mail")
 
-    testImplementation(platform("org.testcontainers:testcontainers-bom:2.0.2"))
-
-    // Required for Testcontainers to run init scripts via JDBC
-    testRuntimeOnly("org.postgresql:postgresql")
     testImplementation("org.springframework.boot:spring-boot-starter-test")
-    testImplementation("org.springframework.boot:spring-boot-testcontainers")
+    testImplementation("io.projectreactor:reactor-test")
+    testImplementation("io.mockk:mockk:1.14.7")
+    implementation("org.mockito.kotlin:mockito-kotlin:5.4.0")
+    testImplementation("org.jetbrains.kotlin:kotlin-test-junit5")
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 
+    testImplementation(platform("org.testcontainers:testcontainers-bom:2.0.2"))
     testImplementation("org.testcontainers:testcontainers-junit-jupiter")
     testImplementation("org.testcontainers:testcontainers-postgresql")
     testImplementation("com.redis:testcontainers-redis:2.2.2")
-
-    testImplementation("io.projectreactor:reactor-test")
-
-    testImplementation("org.jetbrains.kotlin:kotlin-test-junit5")
-    testImplementation("org.testcontainers:testcontainers-r2dbc")
-
-    implementation("io.jsonwebtoken:jjwt-impl:0.12.6")
-    implementation("io.jsonwebtoken:jjwt-api:0.12.6")
-    runtimeOnly("io.jsonwebtoken:jjwt-jackson:0.12.6")
-    implementation("com.warrenstrange:googleauth:1.5.0")
-
-    implementation("com.google.zxing:core:3.5.3")
-    implementation("com.google.zxing:javase:3.5.3")
+    testImplementation("org.springframework.boot:spring-boot-testcontainers")
+    testRuntimeOnly("org.postgresql:postgresql")
 }
 
 kotlin {
