@@ -6,5 +6,6 @@ CREATE TABLE users
     email           VARCHAR(255) NOT NULL UNIQUE,
     hashed_password TEXT         NOT NULL,
     created_at      TIMESTAMPTZ  NOT NULL DEFAULT now(),
-    mfa_options     TEXT
+    mfa_options     TEXT,
+    mfa_secret      TEXT
 );
