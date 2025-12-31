@@ -4,7 +4,7 @@ import java.time.Instant
 
 data class BloomFilterDLQEvent(
     val email: String,
-    val timestamp: Instant = Instant.now(),
+    val timestamp: Long = Instant.now().epochSecond,
     val retryCount: Int = 0,
     val errorMessage: String? = null
 )

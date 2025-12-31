@@ -1,6 +1,7 @@
 package com.ethyllium.authservice.infrastructure.outbound.redis
 
 import com.ethyllium.authservice.domain.port.driven.BloomFilterPort
+import com.fasterxml.jackson.databind.json.JsonMapper
 import jakarta.annotation.PostConstruct
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
@@ -20,7 +21,7 @@ import java.time.Instant
 class BloomFilterDLQConsumer(
     private val reactiveRedisTemplate: ReactiveRedisTemplate<String, String>,
     private val bloomFilterPort: BloomFilterPort,
-    private val objectMapper: ObjectMapper,
+    private val objectMapper: JsonMapper,
     @Value("\${bloom.filter.dlq.max-retries:3}") private val maxRetries: Int
 ) {
     private val logger = LoggerFactory.getLogger(this::class.java)
@@ -104,7 +105,7 @@ class BloomFilterDLQConsumer(
         val updatedEvent = event.copy(
             retryCount = event.retryCount + 1,
             errorMessage = error.message,
-            timestamp = Instant.now()
+            timestamp = Instant.now().epochSecond
         )
         
         return try {
